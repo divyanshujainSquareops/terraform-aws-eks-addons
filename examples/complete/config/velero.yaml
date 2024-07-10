@@ -1,0 +1,23 @@
+credentials:
+  useSecret: false
+
+podAnnotations:
+  co.elastic.logs/enabled: "true"
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: "Addons-Services"
+          operator: In
+          values:
+          - "true"
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

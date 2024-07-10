@@ -153,12 +153,12 @@ variable "internal_nginx_config" {
   }
 }
 
-variable "karpenter_helm_config" {
-  description = "Configure karpenter addons"
-  type = object({
-    values = any
-  })
-}
+# variable "karpenter_helm_config" {
+#   description = "Configure karpenter addons"
+#   type = object({
+#     values = any
+#   })
+# }
 variable "external_secrets_irsa_policies" {
   description = "Additional IAM policies for a IAM role for service accounts"
   type        = list(string)
@@ -361,6 +361,7 @@ variable "velero_enabled" {
   default     = false
   type        = bool
 }
+
 variable "velero_config" {
   description = "Configuration to provide settings for Velero, including which namespaces to backup, retention period, backup schedule, and backup bucket name."
   default = {
@@ -372,8 +373,16 @@ variable "velero_config" {
     schedule_backup_cron_time       = ""
     velero_backup_name              = ""
     backup_bucket_name              = ""
+    velero_values_yaml              = ""
+
   }
   type = any
+}
+
+variable "velero_notification_enabled"{
+  description = "Enable or disable the notification for velero backup."
+  default     = false
+  type        = bool
 }
 
 variable "karpenter_provisioner_enabled" {
@@ -670,4 +679,22 @@ variable "eks_cluster_version" {
   description = "The Kubernetes version for the cluster"
   type        = string
   default     = null
+}
+variable "cluster_id" {
+  description = "Provide name of cluster to take backup."
+  type        = string
+  default     = ""
+}
+
+variable "velero_helm_config" {
+  description = "Configure velero to setup addons"
+  type = object({
+    version = any
+    ingress_values_yaml = any
+  })
+
+  default = {
+    version = ""
+    ingress_values_yaml = ""
+  }
 }

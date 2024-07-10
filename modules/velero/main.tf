@@ -95,27 +95,39 @@ resource "aws_iam_policy" "velero_iam_policy" {
 EOF
 }
 
-module "eks_blueprints_kubernetes_addons" {
+# module "eks_blueprints_kubernetes_addons" {
+#   depends_on              = [aws_iam_policy.velero_iam_policy]
+#   source                  = "../../modules/kubernetes-addons"
+#   eks_cluster_id          = var.cluster_id
+#   enable_velero           = true
+#   velero_backup_s3_bucket = var.velero_config.backup_bucket_name
+#   velero_irsa_policies    = [aws_iam_policy.velero_iam_policy.arn]
+#   velero_helm_config = {
+#     values = [
+#       templatefile("${path.module}/helm/values.yaml", {
+#         bucket = var.velero_config.backup_bucket_name,
+#         region = var.region
+#       })
+#     ]
+#   }
+# }
+
+
+module "velero" {
   depends_on              = [aws_iam_policy.velero_iam_policy]
-  source                  = "../../modules/kubernetes-addons"
-  eks_cluster_id          = var.cluster_id
-  enable_velero           = true
-  velero_backup_s3_bucket = var.velero_config.backup_bucket_name
+  source                  = "./velero-data"
+  helm_config         = var.velero_config
+  addon_context     = local.addon_context
+  backup_s3_bucket  = var.velero_config.backup_bucket_name
   velero_irsa_policies    = [aws_iam_policy.velero_iam_policy.arn]
-  velero_helm_config = {
-    values = [
-      templatefile("${path.module}/helm/values.yaml", {
-        bucket = var.velero_config.backup_bucket_name,
-        region = var.region
-      })
-    ]
-  }
+  eks_cluster_id = var.eks_cluster_id
 }
+
 
 #velero schedule job
 
 resource "helm_release" "velero_schedule_job" {
-  depends_on = [module.eks_blueprints_kubernetes_addons]
+  depends_on = [module.velero]
   name       = format("%s-%s-velero-schedule-job", var.name, var.environment)
   chart      = "${path.module}/velero_job/"
   timeout    = 600
@@ -279,6 +291,7 @@ resource "aws_lambda_permission" "cloudwatch_call_snapshot_delete_lambda" {
 
 resource "helm_release" "velero-notification" {
   depends_on = [helm_release.velero_schedule_job]
+  count  = var.velero_notification_enabled ? 1 : 0
   name       = format("%s-%s-velero-notification", var.name, var.environment)
   repository = "https://charts.botkube.io/"
   chart      = "botkube"
@@ -286,7 +299,7 @@ resource "helm_release" "velero-notification" {
   version    = "1.10.0"
   values = [
     templatefile("${path.module}/velero_notification/values.yaml", {
-      cluster_id         = var.cluster_id,
+      cluster_id         = var.eks_cluster_id,
       slack_botToken     = var.velero_config.slack_botToken,
       slack_appToken     = var.velero_config.slack_appToken,
       slack_channel_name = var.velero_config.slack_notification_channel_name
